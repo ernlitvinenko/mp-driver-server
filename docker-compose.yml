@@ -1,0 +1,20 @@
+services:
+  server:
+    build: .
+    image: "80.249.144.200:5000/mp_driver_server:latest"
+    platform: linux/amd64
+
+    environment:
+      FIREBIRD_HOST: 10.2.100.126
+      FIREBIRD_USER: SYSDBA
+      FIREBIRD_PASSWORD: KfhbjyjdVbif
+      FIREBIRD_DATABASE: NETDBS_2
+      SECRET: d6bcb44a9b50c21b25c3470a6cbfa62738863d63da9e7388683a89802d0cff18
+    ports:
+      - "8000:8000"
+    command: "bash -c 'cd /app && uvicorn --host 0.0.0.0 --port 8000 main:app'"
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
