@@ -1,12 +1,17 @@
 import socket
 from contextlib import contextmanager
-from typing import ContextManager
+from typing import ContextManager, NewType, TypeVar
 
 import sqlalchemy
 from firebird.driver import Cursor, Connection
 from sqlalchemy import text
 
 from core.database.db import engine
+
+
+def row_to_type(self: sqlalchemy.Row):
+    return type("KeyedROW", (), {key.upper(): val for key, val in self._mapping.items()})
+
 
 
 class BaseStorage:
@@ -56,3 +61,6 @@ where ID_SEANS = RDB$GET_CONTEXT('USER_SESSION', 'ID_SEANS');
     #             yield cursor
     #         finally:
     #             cursor.close()
+
+
+sqlalchemy.Row.row_to_type = row_to_type

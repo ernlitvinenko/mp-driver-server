@@ -8,7 +8,7 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 
 from core.config import Config
 from core.errors.auth.errors import profile_not_founded, incorrect_phone_number
-from core.storage import profile
+from core.storage import profile_storage
 
 router = APIRouter(prefix="/auth")
 
@@ -34,19 +34,19 @@ async def get_authorization_code(req: PhoneNumberRequest):
         if not 10 <= len(req.phoneNumber) <= 12:
             incorrect_phone_number()
 
-    p = profile.get_profile_by_phone("".join(char for char in req.phoneNumber if char.isdigit()))
+    p = profile_storage.get_profile_by_phone("".join(char for char in req.phoneNumber if char.isdigit()))
     if not p:
         profile_not_founded()
-    return {"code": profile.generate_profile_auth_code(p.id, p.phone_number)}
+    return {"code": profile_storage.generate_profile_auth_code(p.id, p.phone_number)}
 
 
 @router.post("/phone/code")
 async def get_access_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
-    p = profile.get_profile_by_phone(''.join(char for char in form_data.username if char.isdigit()))
+    p = profile_storage.get_profile_by_phone(''.join(char for char in form_data.username if char.isdigit()))
     if not p:
         profile_not_founded()
 
-    check = profile.check_profile_code(p.id, form_data.password)
+    check = profile_storage.check_profile_code(p.id, form_data.password)
     if not check:
         raise HTTPException(status_code=403, detail="Incorrect code")
 

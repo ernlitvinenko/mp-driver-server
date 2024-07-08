@@ -10,21 +10,21 @@ from core.model.profile.db import ProfileDB
 from core.model.task.db import DBAppTask, DBSubTask, DBEvent
 from core.model.task.enums import StatusEnum
 from core.model.task.requests import SetTaskStatusActiveRequest, SetSubtaskStatusRequest, UpdTaskRequest, UpdTaskData
-from core.storage import task
+from core.storage import task_storage
 
 from core.model.task.db2 import MPAppTaskDB
 
 router = APIRouter(prefix="/tasks", tags=["Tasks and subtasks"])
 
 
-@router.get("/test", description="Fetch Task for authenticated user")
-async def get_task_test(user: ProfileDB = Depends(get_user_from_token)) -> list[MPAppTaskDB]:
-    return MPAppTaskDB.fetch_all()
+# @router.get("/test", description="Fetch Task for authenticated user")
+# async def get_task_test(user: ProfileDB = Depends(get_user_from_token)) -> list[MPAppTaskDB]:
+#     return MPAppTaskDB.fetch_all()
 
 
 @router.get("", description="Fetch Task for authenticated user")
 async def get_tasks(user: ProfileDB = Depends(get_user_from_token)) -> list[DBAppTask]:
-    return task.fetch_tasks_with_subtasks(user.id)
+    return task_storage.fetch_tasks_with_subtasks(user.id)
 
 
 @router.post("")
@@ -83,7 +83,7 @@ async def upd_task(req: UpdTaskRequest, user: ProfileDB = Depends(get_user_from_
         }
     }
 
-    tasks = task.fetch_tasks_with_subtasks(user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user.id)
     available_tasks_ids = [x.id for x in tasks] + [sbt.id for t in tasks for sbt in t.subtasks]
 
     req.data.sort(key=lambda u: u.dt)
@@ -123,21 +123,21 @@ async def upd_task(req: UpdTaskRequest, user: ProfileDB = Depends(get_user_from_
         except KeyError as exc:
             update_task_by_chain_failed(exc)
 
-    [task.update_task(event, user.id) for event in req.data]
-    return task.fetch_tasks_with_subtasks(user.id)
+    [task_storage.update_task(event, user.id) for event in req.data]
+    return task_storage.fetch_tasks_with_subtasks(user.id)
 
 
 @router.get("/planned")
 async def get_planned_tasks(user: ProfileDB = Depends(get_user_from_token)) -> list[DBAppTask]:
     # TODO Rebuild this method to fetch only planned tasks
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     return [x for x in tasks if x.status == StatusEnum.NOT_DEFINED]
 
 
 @router.get("/active")
 async def get_active_task(user: ProfileDB = Depends(get_user_from_token)) -> DBAppTask | dict:
     # TODO Rebuild this method to fetch only active tasks
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     try:
         return next(x for x in tasks if x.status == StatusEnum.IN_PROGRESS)
     except StopIteration:
@@ -147,7 +147,7 @@ async def get_active_task(user: ProfileDB = Depends(get_user_from_token)) -> DBA
 @router.get("/completed")
 async def get_active_task(user: ProfileDB = Depends(get_user_from_token)) -> list[DBAppTask]:
     # TODO Rebuild this method to fetch only active tasks
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     return [x for x in tasks if x.status == StatusEnum.COMPLETED]
 
 
@@ -170,7 +170,7 @@ async def get_active_task(user: ProfileDB = Depends(get_user_from_token)) -> lis
 @router.get("/{task_id}/subtasks")
 async def get_subtasks(user: ProfileDB = Depends(get_user_from_token), task_id: int = Path()) -> list[DBSubTask]:
     # TODO Rebuild this method to fetch only subtasks
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     try:
         t = next(x for x in tasks if x.id == task_id)
         return t.subtasks
@@ -181,11 +181,11 @@ async def get_subtasks(user: ProfileDB = Depends(get_user_from_token), task_id: 
 @router.post("/subtask")
 async def set_status_to_subtask(req_data: SetSubtaskStatusRequest,
                                 user: ProfileDB = Depends(get_user_from_token)) -> DBSubTask:
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     try:
         subtask = next(subtask for t in tasks for subtask in t.subtasks if subtask.id == req_data.subtask_id)
 
-        task.set_subtask_to_completed(subtask_id=subtask.id, profile_id=user.id, dt=req_data.finished_dt)
+        task_storage.set_subtask_to_completed(subtask_id=subtask.id, profile_id=user.id, dt=req_data.finished_dt)
         subtask.status = StatusEnum.COMPLETED
         return subtask
 
@@ -196,7 +196,7 @@ async def set_status_to_subtask(req_data: SetSubtaskStatusRequest,
 @router.get("/{task_id}/events")
 async def get_events(user: ProfileDB = Depends(get_user_from_token), task_id: int = Path()) -> list[DBEvent]:
     # TODO Rebuild this method to fetch only events
-    tasks = task.fetch_tasks_with_subtasks(user_id=user.id)
+    tasks = task_storage.fetch_tasks_with_subtasks(user_id=user.id)
     try:
         t = next(x for x in tasks if x.id == task_id)
         return [x for x in t.events if x.type == "Change"]
