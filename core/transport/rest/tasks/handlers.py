@@ -29,6 +29,7 @@ async def get_tasks(user: ProfileDB = Depends(get_user_from_token)) -> list[DBAp
 
 @router.post("")
 async def upd_task(req: UpdTaskRequest, user: ProfileDB = Depends(get_user_from_token)) -> list[DBAppTask]:
+    print(req)
     def check_task_in_progress(e: UpdTaskData, t: DBAppTask):
         t.subtasks.sort(key=lambda u: u.start_pln)
         try:

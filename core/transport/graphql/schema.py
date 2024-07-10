@@ -45,7 +45,8 @@ class MarshTemperaturePropertyQL(Enum):
 class Query:
 
     @strawberry.field
-    def tasks(self, user_id: str, is_planned: typing.Optional[bool] = False, is_completed: typing.Optional[bool] = False) -> list['AppTaskQL']:
+    def tasks(self, user_id: str, is_planned: typing.Optional[bool] = False,
+              is_completed: typing.Optional[bool] = False) -> list['AppTaskQL']:
         tasks = task_storage.fetch_tasks_with_subtasks(user_id)
 
         if is_planned:
@@ -73,6 +74,15 @@ class Query:
                 return None
 
     @strawberry.field
+    def count_planned_tasks(self, user_id: str) -> int:
+        return len(
+            [x for x in task_storage.fetch_tasks_with_subtasks(int(user_id)) if x.status == x.status.NOT_DEFINED])
+
+    @strawberry.field
+    def count_completed_tasks(self, user_id: str) -> int:
+        return len([x for x in task_storage.fetch_tasks_with_subtasks(int(user_id)) if x.status == x.status.COMPLETED])
+
+    @strawberry.field
     def notes(self, user_id: str) -> list['AppNoteQL']:
         return note_storage.fetch_all_notes_for_user(int(user_id))
 
@@ -83,6 +93,10 @@ class Query:
                         s.id == int(subtask_id))
         except StopIteration:
             return None
+
+    @strawberry.field
+    def subtasks(self, user_id: str) -> list['SubtaskQL']:
+        return [s for t in task_storage.fetch_tasks_with_subtasks(int(user_id)) for s in t.subtasks]
 
 
 @strawberry.experimental.pydantic.type(model=Location)
@@ -105,7 +119,7 @@ class SubtaskQL:
     start_fact: strawberry.auto
     end_fact: strawberry.auto
     status: StatusEnumQl
-    task_type: int
+    task_type: str
     text: str
 
     station: typing.Optional[MSTQL] = None
@@ -151,7 +165,7 @@ class AppTaskQL:
     start_fact: strawberry.auto
     end_fact: strawberry.auto
     status: StatusEnumQl
-    task_type: int
+    task_type: str
     text: strawberry.auto
 
     events: list[AppEventQL]
