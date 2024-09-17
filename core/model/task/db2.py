@@ -40,9 +40,9 @@ class MPAppTaskDB(__Base):
 
 class MPAppEventDB(__Base):
     __tablename__: str = "APP_EVENT"
-    ID_APP_EVENT: Mapped[int]  = mapped_column(primary_key=True)
-    APP_EVENT_ID_SOTR: Mapped[int]
-    APP_EVENT_ID_REC: Mapped[int]
+    ID_APP_EVENT: Mapped[int]  = mapped_column(BIGINT, primary_key=True)
+    APP_EVENT_ID_SOTR: Mapped[int] = mapped_column(BIGINT)
+    APP_EVENT_ID_REC: Mapped[int] = mapped_column(BIGINT)
     APP_EVENT_VID: Mapped[int]
     APP_EVENT_TIP: Mapped[int]
     APP_EVENT_DT: Mapped[datetime | None]

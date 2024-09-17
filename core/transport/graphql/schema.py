@@ -1,3 +1,4 @@
+import json
 import typing
 
 from core.model.note.db import AppNoteDB
@@ -8,10 +9,12 @@ from enum import Enum
 
 import strawberry
 from strawberry.types import Info
-from sqlalchemy import select
+from sqlalchemy import select, text, insert, TableClause, ColumnClause
 
+from core.model.task.db2 import MPAppEventDB
 from core.model.task.enums import StatusEnum
 from core.storage import base_storage, task_storage, note_storage
+from core.transport.graphql.db_schema import DB, APP_EVENT
 
 
 @strawberry.enum
@@ -43,6 +46,10 @@ class MarshTemperaturePropertyQL(Enum):
 
 @strawberry.type
 class Query:
+
+    @strawberry.field
+    def db(self) -> DB:
+        return DB()
 
     @strawberry.field
     def tasks(self, user_id: str, is_planned: typing.Optional[bool] = False,
@@ -180,4 +187,39 @@ class AppTaskQL:
             return None
 
 
-schema = strawberry.Schema(query=Query)
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    async def add_event(self,
+    APP_EVENT_ID_SOTR: str,
+    APP_EVENT_ID_REC: str,
+    APP_EVENT_VID: int,
+    APP_EVENT_TIP: int,
+    APP_EVENT_TEXT: str,
+    APP_EVENT_DATA: str,
+    APP_EVENT_DT: str) -> APP_EVENT:
+        with base_storage.get_session() as session:
+            stmt = insert(MPAppEventDB).values(
+                **{
+                    "APP_EVENT_ID_SOTR": int(APP_EVENT_ID_SOTR),
+                    "APP_EVENT_ID_REC": int(APP_EVENT_ID_REC),
+                    "APP_EVENT_VID": int(APP_EVENT_VID),
+                    "APP_EVENT_TIP": int(APP_EVENT_TIP),
+                    "APP_EVENT_TEXT": APP_EVENT_TEXT,
+                    "APP_EVENT_DATA": json.dumps(json.loads(APP_EVENT_DATA), separators=(',', ":")),
+                    "APP_EVENT_DT": datetime.fromtimestamp(int(APP_EVENT_DT) / 1000),
+                }
+            )
+            row = session.execute(stmt)
+            session.commit()
+            row = session.execute(text("""
+                select * from APP_EVENT where ID_APP_EVENT = :idx
+            """), {"idx": row.inserted_primary_key_rows[0][0]})
+            data = row.fetchone()
+
+        return APP_EVENT(**{row._metadata.keys._keys[idx].upper(): elem for idx, elem in enumerate(data) if
+                             row._metadata.keys._keys[idx].upper() in APP_EVENT.__annotations__})
+
+
+schema = strawberry.Schema(query=Query, mutation=Mutation)

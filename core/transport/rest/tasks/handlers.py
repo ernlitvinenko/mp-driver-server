@@ -29,7 +29,6 @@ async def get_tasks(user: ProfileDB = Depends(get_user_from_token)) -> list[DBAp
 
 @router.post("")
 async def upd_task(req: UpdTaskRequest, user: ProfileDB = Depends(get_user_from_token)) -> list[DBAppTask]:
-    print(req)
     def check_task_in_progress(e: UpdTaskData, t: DBAppTask):
         t.subtasks.sort(key=lambda u: u.start_pln)
         try:
@@ -52,10 +51,10 @@ async def upd_task(req: UpdTaskRequest, user: ProfileDB = Depends(get_user_from_
                 next(x for x in req.data if x.status == StatusEnum.IN_PROGRESS and x.task_id == main_task.id)
             else:
                 prev_idx = main_task.subtasks.index(sbt) - 1
-                next(ev for ev in req.data if ev.task_id == main_task.subtasks[prev_idx].id and ev.status in ( StatusEnum.COMPLETED, StatusEnum.CANCELLED))
+                next(ev for ev in req.data if ev.task_id == main_task.subtasks[prev_idx].id and ev.status in (
+                StatusEnum.COMPLETED, StatusEnum.CANCELLED))
         except StopIteration as exc:
             update_task_by_chain_failed(exc)
-
 
     def check_sbt_completed(e: UpdTaskData, sbt: DBSubTask):
         main_task = next(t for t in tasks for s in t.subtasks if s.id == sbt.id)

@@ -1,10 +1,10 @@
 import socket
 from contextlib import contextmanager
-from typing import ContextManager, NewType, TypeVar
+from typing import ContextManager, NewType, TypeVar, Optional
 
 import sqlalchemy
 from firebird.driver import Cursor, Connection
-from sqlalchemy import text
+from sqlalchemy import text, Engine
 
 from core.database.db import engine
 
@@ -13,9 +13,24 @@ def row_to_type(self: sqlalchemy.Row):
     return type("KeyedROW", (), {key.upper(): val for key, val in self._mapping.items()})
 
 
+class _SessionCtxManager:
+    def __init__(self, parent: type['BaseStorage']):
+        self.parent = parent
+        self.con: Optional[sqlalchemy.Connection] = None
+
+    def __enter__(self) -> sqlalchemy.Connection:
+        self.con = self.parent.pool.connect()
+        if not self.parent.is_authorized(self.con):
+            self.parent.db_authorization(self.con)
+        return self.con
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.con.close()
+
+
 
 class BaseStorage:
-    _pool = engine
+    pool = engine
 
     @staticmethod
     def db_authorization(con: sqlalchemy.Connection):
@@ -40,16 +55,8 @@ where ID_SEANS = RDB$GET_CONTEXT('USER_SESSION', 'ID_SEANS');
         return con.execute(stmt).fetchone()[0] == 31
 
     @classmethod
-    @contextmanager
-    def get_session(cls) -> ContextManager[sqlalchemy.Connection]:
-        connection = cls._pool.connect()
-        if not cls.is_authorized(connection):
-            cls.db_authorization(connection)
-
-        try:
-            yield connection
-        finally:
-            connection.close()
+    def get_session(cls) -> _SessionCtxManager:
+        return _SessionCtxManager(parent=cls)
 
     # @classmethod
     # @contextmanager

@@ -38,7 +38,7 @@ class DBAppTask(DBModel):
     end_fact: datetime.datetime | None
     status: StatusEnum
     task_type: TaskTypeEnum
-    text: str
+    text: str | None
 
     events: list['DBEvent'] = []
     subtasks: list[DBSubTask] | None = []
@@ -75,7 +75,7 @@ class Location(BaseModel):
 class DBEvent(DBModel):
     id: int
     type: str
-    text: str
+    text: str | None
     parent_id: int = Field(default=0, exclude=True)
     event_data: list | Json
     event_datetime: datetime.datetime
